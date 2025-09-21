@@ -1,0 +1,58 @@
+system:
+  max_line_length: 1048576  # 1MB
+  max_decode_rounds: 5
+  timezone: "UTC"
+  concurrent_workers: 4
+  rate_limit_rps: 10000
+
+parser:
+  allowed_encodings: ["utf-8", "gbk", "ascii"]
+  skip_empty_lines: true
+  skip_bom: true
+
+detector:
+  rules_file: "rules.yml"
+  ml_model_path: "models/"
+  anomaly_window: 3600  # 1 hour baseline
+  ml_threshold: 0.8
+  enable_ml: true
+
+correlator:
+  window_seconds: 60
+  dedup_ttl: 600  # 10 minutes
+  max_events_per_window: 100
+
+responder:
+  action_timeout: 5
+  max_actions_per_second: 100
+
+output:
+  signals_file: "out/signals.jsonl"
+  actions_file: "out/actions.jsonl"
+  metrics_file: "out/metrics.json"
+
+masking:
+  email_pattern: r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+  phone_pattern: r'\b1[3-9]\d{9}\b'
+  id_card_pattern: r'\b\d{17}[\dXx]\b'
+  credit_card_pattern: r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b'
+  api_key_pattern: r'\b[A-Za-z0-9]{32,}\b'
+
+rules:
+  sqli:
+    - pattern: "(?i)(union\s+select|select\s+.*\s+from\s+.*\s+where|insert\s+into|delete\s+from|update\s+.*\s+set)"
+      severity: "high"
+    - pattern: "(?i)(drop\s+table|alter\s+table|create\s+table|truncate\s+table)"
+      severity: "critical"
+
+  xss:
+    - pattern: "(?i)(<script|javascript:|onerror\s*=|onload\s*=|alert\s*\()"
+      severity: "medium"
+    - pattern: "(?i)(<iframe|<object|<embed|document\.|window\.)"
+      severity: "high"
+
+  command_injection:
+    - pattern: "(?i)(;|\||&|\$\(|`|nc\s|netcat|curl\s|wget\s)"
+      severity: "high"
+    - pattern: "(?i)(/bin/|/usr/|cmd\.exe|powershell)"
+      severity: "critical"
